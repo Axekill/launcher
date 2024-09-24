@@ -10,7 +10,10 @@ module zone.gamers.launcher {
     requires org.kordamp.bootstrapfx.core;
     requires eu.hansolo.tilesfx;
     requires com.almasb.fxgl.all;
+    requires java.desktop;
 
     opens zone.gamers.launcher to javafx.fxml;
     exports zone.gamers.launcher;
+    exports zone.gamers.launcher.controller;
+    opens zone.gamers.launcher.controller to javafx.fxml;
 }
