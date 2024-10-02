@@ -4,6 +4,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
 
 public class LauncherController {
@@ -11,7 +12,7 @@ public class LauncherController {
     private Button playButton;
 
     @FXML
-    private AnchorPane scenePane;
+    private Pane root;
 
     Stage stage;
 
