@@ -11,6 +11,7 @@ module zone.gamers.launcher {
     requires eu.hansolo.tilesfx;
     requires com.almasb.fxgl.all;
     requires java.desktop;
+    requires jdk.compiler;
 
     opens zone.gamers.launcher to javafx.fxml;
     exports zone.gamers.launcher;
