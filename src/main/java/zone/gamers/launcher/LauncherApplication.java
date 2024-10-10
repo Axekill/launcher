@@ -5,6 +5,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -37,7 +38,7 @@ public class LauncherApplication extends Application {
 
         // Загружаем FXML
         //  Pane root = FXMLLoader.load(Objects.requireNonNull(getClass().getResource("launcher.fxml")));
-        Pane root = new Pane();
+        AnchorPane root = new AnchorPane();
 
         // Настраиваем сцену и фон
         Scene scene = new Scene(root, 1024, 768);
@@ -77,24 +78,6 @@ public class LauncherApplication extends Application {
         hyperlink.setLayoutY(posY);
         hyperlink.setOnAction(event -> getHostServices().showDocument(url));
         return hyperlink;
-    }
-
-
-    private void configHDC(Hyperlink dc) {
-        dc.setLayoutX(510);
-        dc.setLayoutY(680);
-        dc.setOnAction(event -> {
-            getHostServices().showDocument("https://discord.gg/B7sh4vR7dM");
-        });
-    }
-
-
-    private void configHVK(Hyperlink vk) {
-        vk.setLayoutX(450);
-        vk.setLayoutY(680);
-        vk.setOnAction(event -> {
-            getHostServices().showDocument("https://vk.com/ovoschipz");
-        });
     }
 
     private void configServerLabel(Label serverLabel) {
