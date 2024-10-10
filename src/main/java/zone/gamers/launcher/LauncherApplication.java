@@ -1,6 +1,8 @@
 package zone.gamers.launcher;
 
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
@@ -92,8 +94,8 @@ public class LauncherApplication extends Application {
         serverComboBox.setLayoutY(700);
     }
 
-    // Метод для установки фона
-    private void setBackground(Pane root) {
+    //Метод для установки фона
+    private void setBackground(AnchorPane root) {
         Image bgImage = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/11.jpg")));
         ImageView bgView = new ImageView(bgImage);
         root.getChildren().addFirst(bgView); // Устанавливаем фоновое изображение на задний план
@@ -116,33 +118,52 @@ public class LauncherApplication extends Application {
             return;
         }
 
-        String gameFileName = "game.exe"; // Имя файла игры
-        List<String> searchDirectories = List.of("C:\\", "D:\\", "E:\\", "F:\\"); // Директории для поиска
-        String serverGameVersion = getServerGameVersion(selectedServer);
-        try {
-            Optional<Path> gamePath = findGameFile(searchDirectories, gameFileName);
+        // Создаем новый Task для запуска игры
+        Task<Void> launchTask = new Task<>() {
+            @Override
+            protected Void call() {
+                String gameFileName = "game.exe"; // Имя файла игры
+                List<String> searchDirectories = List.of("C:\\", "D:\\", "E:\\", "F:\\"); // Директории для поиска
+                String serverGameVersion = getServerGameVersion(selectedServer);
 
-            if (gamePath.isEmpty()) {
-                playButton.setText("Download");
-                handleGameDownload(selectedServer, gameFileName);
-                return;
+                try {
+                    Optional<Path> gamePath = findGameFile(searchDirectories, gameFileName);
+
+                    if (gamePath.isEmpty()) {
+                        updateMessage("Игра не найдена. Начинаем загрузку...");
+                        Platform.runLater(() -> playButton.setText("Download"));
+                        handleGameDownload(selectedServer, gameFileName);
+                        return null;
+                    }
+
+                    String currentGameVersion = getCurrentGameVersion(gamePath.get());
+
+                    if (!currentGameVersion.equals(serverGameVersion)) {
+                        updateMessage("Игра устарела. Обновляем...");
+                        Platform.runLater(() -> playButton.setText("Update"));
+                        handleGameDownload(selectedServer, gameFileName);
+                        return null;
+                    }
+
+                    Platform.runLater(() -> playButton.setText("Play"));
+                    startGame(gamePath.get());
+
+                } catch (IOException e) {
+                    Platform.runLater(() -> showAlert("Ошибка при поиске или запуске игры: " + e.getMessage()));
+                }
+                return null;
             }
+        };
 
-            String currentGameVersion = getCurrentGameVersion(gamePath.get());
+        // Опционально: можно выводить текст статуса
+        launchTask.messageProperty().addListener((observable, oldValue, newValue) -> {
+            System.out.println(newValue); // Или обновить Label статуса на UI
+        });
 
-            if (!currentGameVersion.equals(serverGameVersion)) {
-                playButton.setText("Update");
-                handleGameDownload(selectedServer, gameFileName);
-                return;
-            }
-
-            playButton.setText("Play");
-            startGame(gamePath.get());
-
-        } catch (IOException e) {
-            showAlert("Ошибка при поиске или запуске игры: " + e.getMessage());
-        }
+        // Запуск задачи в отдельном потоке
+        new Thread(launchTask).start();
     }
+
 
     private void loadAvailableServers() {
         try {
