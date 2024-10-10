@@ -1,14 +1,10 @@
 package zone.gamers.launcher;
 
-import com.sun.tools.javac.Main;
 import javafx.application.Application;
-import javafx.application.HostServices;
-import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -22,22 +18,20 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 public class LauncherApplication extends Application {
 
     private ComboBox<String> serverComboBox = new ComboBox<>();
-    private String availableVersionsGame;
     private ListView<String> availableServersList;
     private Button playButton;
-    private String serverGame;
-
 
     @Override
     public void start(Stage stage) throws IOException {
+
         addIcon(stage);
 
         serverComboBox.getItems().addAll("1 Овощной");
@@ -118,7 +112,7 @@ public class LauncherApplication extends Application {
     private void setBackground(Pane root) {
         Image bgImage = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/11.jpg")));
         ImageView bgView = new ImageView(bgImage);
-        root.getChildren().add(0, bgView); // Устанавливаем фоновое изображение на задний план
+        root.getChildren().addFirst(bgView); // Устанавливаем фоновое изображение на задний план
     }
 
     // Метод для конфигурации кнопки "PLAY"
@@ -129,6 +123,42 @@ public class LauncherApplication extends Application {
         playButton.setOnAction(e -> launchGame());
     }
 
+
+    private void launchGame() {
+        String selectedServer = availableServersList.getSelectionModel().getSelectedItem();
+
+        if (selectedServer == null) {
+            showAlert("Пожалуйста, выберите сервер");
+            return;
+        }
+
+        String gameFileName = "game.exe"; // Имя файла игры
+        List<String> searchDirectories = List.of("C:\\", "D:\\", "E:\\", "F:\\"); // Директории для поиска
+        String serverGameVersion = getServerGameVersion(selectedServer);
+        try {
+            Optional<Path> gamePath = findGameFile(searchDirectories, gameFileName);
+
+            if (gamePath.isEmpty()) {
+                playButton.setText("Download");
+                handleGameDownload(selectedServer, gameFileName);
+                return;
+            }
+
+            String currentGameVersion = getCurrentGameVersion(gamePath.get());
+
+            if (!currentGameVersion.equals(serverGameVersion)) {
+                playButton.setText("Update");
+                handleGameDownload(selectedServer, gameFileName);
+                return;
+            }
+
+            playButton.setText("Play");
+            startGame(gamePath.get());
+
+        } catch (IOException e) {
+            showAlert("Ошибка при поиске или запуске игры: " + e.getMessage());
+        }
+    }
 
     private void loadAvailableServers() {
         try {
@@ -162,96 +192,102 @@ public class LauncherApplication extends Application {
         }
     }
 
-    private void launchGame() {
-        String selectServer = availableServersList.getSelectionModel().getSelectedItem();
-
-        if (selectServer == null) {
-            System.out.println("Пожалуйста выберите сервер");
-            return;
-        }
-
-        String fileName = "game.exe"; // Имя файла
-        List<String> searchDirectories = List.of("C:\\", "D:\\", "E:\\", "F:\\"); // Список разделов
-        String currentGameVersion = "1.0.0"; // Версия текущей игры
-        String serverGameVersion = getServerGameVersion(selectServer); // Метод для получения версии игры с сервера
+    private String getServerGameVersion(String server) {
+        String versionUrl = server + "/game/version"; // URL для запроса версии игры
+        StringBuilder response = new StringBuilder();
 
         try {
-            Path gamePath = null;
+            // Создаем URL объект и открываем соединение
+            HttpURLConnection connection = (HttpURLConnection) new URL(versionUrl).openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(5000);  // Тайм-аут соединения
+            connection.setReadTimeout(5000);     // Тайм-аут чтения
 
-            for (String directory : searchDirectories) {
-                try (Stream<Path> paths = Files.walk(Paths.get(directory))) {
-                    gamePath = paths
-                            .filter(Files::isRegularFile)
-                            .filter(path -> path.getFileName().toString().equalsIgnoreCase(fileName))
-                            .findFirst()
-                            .orElse(null);
+            // Проверяем код ответа
+            if (connection.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                // Используем try-with-resources для автоматического закрытия
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
                 }
-                if (gamePath != null) break; // Прерываем, если файл найден
-            }
-
-            if (gamePath == null) {
-                playButton.setText("Download");
-                showAlert("Игра не найдена.");
-                //  downloadGame(fileName);
-                return;
-            } else if (!currentGameVersion.equals(serverGameVersion)) {
-                playButton.setText("Update");
-                showAlert("Необходимо обновление игры.");
-                return;
+                return response.toString(); // Возвращаем версию игры
             } else {
-                playButton.setText("Play");
+                System.err.println("Ошибка: " + connection.getResponseCode());
+                return "1.0"; // Возвращаем запасную версию в случае ошибки
             }
-
-            ProcessBuilder processBuilder = new ProcessBuilder(gamePath.toString());
-            Process process = processBuilder.start();
-            System.out.println("Игра запущена: " + gamePath);
         } catch (IOException e) {
-            showAlert("Ошибка при поиске игры: " + e.getMessage());
+            System.err.println("Ошибка при получении версии: " + e.getMessage());
+            return "1.0";
         }
     }
 
-    private void downloadGame(String server, String fileName) {
-        String fileUrl = server + "/path/to/" + fileName;
+    private String getCurrentGameVersion(Path gamePath) throws IOException {
+        Path configPath = gamePath.getParent().resolve("config.txt");
 
-        // Открываем диалог выбора директории
+        if (!Files.exists(configPath)) {
+            return "config not found"; // Обработка отсутствия файла
+        }
+
+        try {
+            List<String> lines = Files.readAllLines(configPath);
+
+            for (String line : lines) {
+                if (line.startsWith("version=")) {
+                    return line.split("=")[1].trim(); // Возвращаем версию после знака '=' и убираем лишние пробелы
+                }
+            }
+
+            return "version not found"; // Если версия не найдена
+        } catch (IOException e) {
+            throw new IOException("Ошибка при чтении конфигурационного файла: " + e.getMessage());
+        }
+    }
+
+    private void handleGameDownload(String server, String fileName) {
+        String fileUrl = server + "/path/to/" + fileName;
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+
         int result = fileChooser.showSaveDialog(null);
-
         if (result == JFileChooser.APPROVE_OPTION) {
-            // Получаем выбранную директорию
-            Path saveDir = fileChooser.getSelectedFile().toPath();
-            Path savePath = saveDir.resolve(fileName);
-
-            // Создаем директорию если она ещё не существует
-            try {
-                Files.createDirectories(savePath.getParent());
-            } catch (IOException e) {
-                showAlert("Ошибка при создании директории: " + e.getMessage());
-                return;
-            }
-
-            // Скачиваем файл
-            try (BufferedInputStream in = new BufferedInputStream(new URL(fileUrl).openStream());
-                 FileOutputStream fileOutputStream = new FileOutputStream(savePath.toString())) {
-                byte[] dataBuffer = new byte[1024];
-                int bytesRead;
-                while ((bytesRead = in.read(dataBuffer, 0, 1024)) != -1) {
-                    fileOutputStream.write(dataBuffer, 0, bytesRead);
+            File selectedDir = fileChooser.getSelectedFile();
+            new Thread(() -> {
+                try {
+                    URL url = new URL(fileUrl);
+                    try (InputStream in = url.openStream();
+                         FileOutputStream out = new FileOutputStream(new File(selectedDir, fileName))) {
+                        byte[] buffer = new byte[2048];
+                        int bytesRead;
+                        while ((bytesRead = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, bytesRead);
+                        }
+                    }
+                    showAlert("Игра успешно загружена/обновлена.");
+                } catch (IOException e) {
+                    showAlert("Ошибка при загрузке игры: " + e.getMessage());
                 }
-                showAlert("Игра успешно загружена.");
-                playButton.setText("PLAY");
-            } catch (IOException e) {
-                showAlert("Ошибка при скачивании игры: " + e.getMessage());
-            }
-        } else {
-            showAlert("Скачивание отменено.");
+            }).start();
         }
     }
 
-    private String getServerGameVersion(String server) {
-        // Имплементация для получения версии игры с сервера
-        return "1.0.1"; // Заглушка, возвращающая версию сервера
+    private Optional<Path> findGameFile(List<String> directories, String fileName) throws IOException {
+        for (String directory : directories) {
+            try (Stream<Path> paths = Files.walk(Paths.get(directory))) {
+                return paths
+                        .filter(Files::isRegularFile)
+                        .filter(path -> path.getFileName().toString().equalsIgnoreCase(fileName))
+                        .findFirst(); // Возвращает найденный путь или пустой
+            }
+        }
+        return Optional.empty(); // Если ничего не найдено
+    }
+
+    private void startGame(Path gamePath) throws IOException {
+        ProcessBuilder processBuilder = new ProcessBuilder(gamePath.toString());
+        Process process = processBuilder.start();
+        System.out.println("Игра запущена: " + gamePath);
     }
 
 
