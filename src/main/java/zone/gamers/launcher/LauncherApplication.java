@@ -25,7 +25,7 @@ import java.util.stream.Stream;
 
 public class LauncherApplication extends Application {
 
-    private ComboBox<String> serverComboBox = new ComboBox<>();
+    private final ComboBox<String> serverComboBox = new ComboBox<>();
     private Button playButton;
 
     @Override
@@ -50,16 +50,9 @@ public class LauncherApplication extends Application {
         // Button playButton = new Button("PLAY");
         configurePlayButton(playButton); // Метод для конфигурации кнопки
 
-        //Гиперссылка vk
-        var vkImg = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/vk.png")));
-        ImageView vkIcon = new ImageView(vkImg);
-        Hyperlink vk = new Hyperlink("", vkIcon);
-        configHVK(vk);
-        //discord
-        var dcImg = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/img/discord.png")));
-        ImageView dcIcon = new ImageView(dcImg);
-        Hyperlink dc = new Hyperlink("", dcIcon);
-        configHDC(dc);
+        //Гиперссылки
+        Hyperlink vk = createHyperlink("/img/vk.png", "https://vk.com/ovoschipz", 450, 680);
+        Hyperlink dc = createHyperlink("/img/discord.png", "https://discord.gg/B7sh4vR7dM", 510, 680);
 
 
         Label serverLabel = new Label("Сервер");
@@ -75,6 +68,17 @@ public class LauncherApplication extends Application {
         configServerLabel(serverLabel);
         configServerCB(serverComboBox);
     }
+
+    private Hyperlink createHyperlink(String imgPath, String url, double posX, double posY) {
+        Image img = new Image(Objects.requireNonNull(getClass().getResourceAsStream(imgPath)));
+        ImageView icon = new ImageView(img);
+        Hyperlink hyperlink = new Hyperlink("", icon);
+        hyperlink.setLayoutX(posX);
+        hyperlink.setLayoutY(posY);
+        hyperlink.setOnAction(event -> getHostServices().showDocument(url));
+        return hyperlink;
+    }
+
 
     private void configHDC(Hyperlink dc) {
         dc.setLayoutX(510);
