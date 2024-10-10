@@ -26,7 +26,6 @@ import java.util.stream.Stream;
 public class LauncherApplication extends Application {
 
     private ComboBox<String> serverComboBox = new ComboBox<>();
-    private ListView<String> availableServersList;
     private Button playButton;
 
     @Override
@@ -34,8 +33,6 @@ public class LauncherApplication extends Application {
 
         addIcon(stage);
 
-        serverComboBox.getItems().addAll("1 Овощной");
-        availableServersList = new ListView<>();
         playButton = new Button("PLAY");
 
         // Загружаем FXML
@@ -125,7 +122,7 @@ public class LauncherApplication extends Application {
 
 
     private void launchGame() {
-        String selectedServer = availableServersList.getSelectionModel().getSelectedItem();
+        String selectedServer = serverComboBox.getSelectionModel().getSelectedItem();
 
         if (selectedServer == null) {
             showAlert("Пожалуйста, выберите сервер");
@@ -178,8 +175,8 @@ public class LauncherApplication extends Application {
                     servers.add(inputLine.trim()); // Убираем пробелы
                 }
 
-                availableServersList.getItems().clear(); // Очистка списка перед добавлением новых данных
-                availableServersList.getItems().addAll(servers);
+                serverComboBox.getItems().clear(); // Очистка ComboBox перед добавлением новых данных
+                serverComboBox.getItems().addAll(servers); // Добавление серверов в ComboBox
                 in.close();
             } else {
                 showAlert("Ошибка: Сервер вернул статус " + responseCode);
@@ -191,6 +188,7 @@ public class LauncherApplication extends Application {
             e.printStackTrace(); // Для отладки
         }
     }
+
 
     private String getServerGameVersion(String server) {
         String versionUrl = server + "/game/version"; // URL для запроса версии игры
