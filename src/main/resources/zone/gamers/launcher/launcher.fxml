@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<AnchorPane fx:id="root" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="zone.gamers.launcher.controller.LauncherController">
+   <Button fx:id="playButton" layoutX="490.0" layoutY="337.0" mnemonicParsing="false" onAction="#onPlay" prefHeight="40.0" prefWidth="89.0" style="-fx-background-color: gray+yellow;" text="PLAY" textFill="#da3333">
+      <font>
+         <Font name="Bauhaus 93" size="22.0" />
+      </font>
+   </Button>
+</AnchorPane>
