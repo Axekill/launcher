@@ -11,6 +11,7 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
 import javax.swing.*;
@@ -253,30 +254,34 @@ public class LauncherApplication extends Application {
 
     private void handleGameDownload(String server, String fileName) {
         String fileUrl = server + "/path/to/" + fileName;
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 
-        int result = fileChooser.showSaveDialog(null);
-        if (result == JFileChooser.APPROVE_OPTION) {
-            File selectedDir = fileChooser.getSelectedFile();
-            new Thread(() -> {
-                try {
-                    URL url = new URL(fileUrl);
-                    try (InputStream in = url.openStream();
-                         FileOutputStream out = new FileOutputStream(new File(selectedDir, fileName))) {
-                        byte[] buffer = new byte[2048];
-                        int bytesRead;
-                        while ((bytesRead = in.read(buffer)) != -1) {
-                            out.write(buffer, 0, bytesRead);
+        Platform.runLater(() -> {
+            DirectoryChooser directoryChooser = new DirectoryChooser();
+            directoryChooser.setTitle("Выберите папку для установки игры");
+            File selectedDir = directoryChooser.showDialog(null);
+
+            if (selectedDir != null) {
+                new Thread(() -> {
+                    try {
+                        URL url = new URL(fileUrl);
+                        try (InputStream in = url.openStream();
+                             FileOutputStream out = new FileOutputStream(new File(selectedDir, fileName))) {
+
+                            byte[] buffer = new byte[2048];
+                            int bytesRead;
+                            while ((bytesRead = in.read(buffer)) != -1) {
+                                out.write(buffer, 0, bytesRead);
+                            }
                         }
+                        Platform.runLater(() -> showAlert("Игра успешно загружена/обновлена."));
+                    } catch (IOException e) {
+                        Platform.runLater(() -> showAlert("Ошибка при загрузке игры: " + e.getMessage()));
                     }
-                    showAlert("Игра успешно загружена/обновлена.");
-                } catch (IOException e) {
-                    showAlert("Ошибка при загрузке игры: " + e.getMessage());
-                }
-            }).start();
-        }
+                }).start();
+            }
+        });
     }
+
 
     private Optional<Path> findGameFile(List<String> directories, String fileName) throws IOException {
         for (String directory : directories) {
